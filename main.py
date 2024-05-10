@@ -44,61 +44,70 @@ train_data = con.query(f"""(SELECT *
                         LIMIT 35000)""").df()
 
 con.close()
-test = pd.read_csv(test_path)
+test_data = pd.read_csv(test_path)
 
 #Select x,y
 train_x = train_data.drop(columns=['ID', 'Click'])
 train_y = train_data['Click']
 
-test_x = test.drop(columns=['ID'])
+test_x = test_data.drop(columns=['ID'])
 
 #Fill NaN
-for col in tqdm(train_x.columns):
-    if train_x[col].isnull().sum() != 0:
-        train_x[col].fillna(0, inplace=True)
-        test_x[col].fillna(0, inplace=True)
+# for col in tqdm(train_x.columns):
+#     if train_x[col].isnull().sum() != 0:
+#         train_x[col].fillna(0, inplace=True)
+#         test_x[col].fillna(0, inplace=True)
+train_x.fillna(0, inplace=True)
+test_x.fillna(0, inplace=True)
 
-object_target = list(train_x.dtypes[train_x.dtypes == "object"].index)
-float_target=list(train_x.dtypes[train_x.dtypes == "float"].index)
+label_encoder = LabelEncoder()
+min_max_scaler = MinMaxScaler()
 
+# object_target = list(train_x.dtypes[train_x.dtypes == "object"].index)
+# float_target=list(train_x.dtypes[train_x.dtypes == "float"].index)
 
-# 범주형 특성 인코딩
-label_encoders = {}
-for cat_col in object_target:
-    le = LabelEncoder()
-    train_data[cat_col] = le.fit_transform(train_data[cat_col])
-    label_encoders[cat_col] = le
+categorical_columns = train_x.select_dtypes(include=['object', 'category']).columns
+continuous_columns = train_x.select_dtypes(include=[np.number]).columns
 
-# 연속형 특성 스케일링
+# 범주형 데이터 문자열 변환 및 인코딩
+for col in categorical_columns:
+    train_x[col] = train_x[col].astype(str)
+    train_x[col] = LabelEncoder().fit_transform(train_x[col])
+    test_x[col] = test_x[col].astype(str)
+    test_x[col] = LabelEncoder().fit_transform(test_x[col])
+
+# 연속형 데이터 스케일링
 scaler = MinMaxScaler()
-train_data[float_target] = scaler.fit_transform(train_data[float_target])
+train_x[continuous_columns] = scaler.fit_transform(train_x[continuous_columns])
+test_x[continuous_columns] = scaler.fit_transform(test_x[continuous_columns])
 
-feature_sizes = [len(le.classes_) for le in label_encoders.values()]
+# TensorDataset과 DataLoader 준비
+train_x_tensor = torch.tensor(train_x.values, dtype=torch.float32)
+train_y_tensor = torch.tensor(train_y.values, dtype=torch.float32).unsqueeze(1)
+
+
+dataset = TensorDataset(train_x_tensor, train_y_tensor)
+loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 
 #모델 정의 (DeepFM)
+feature_sizes = [len(np.unique(train_x[col])) for col in train_x.columns]
 model = DeepFM(feature_sizes=feature_sizes, embedding_size=4, hidden_dims=[32, 32], num_classes=1, use_cuda=True)
 
+# train_x = train_data.drop(columns=['ID', 'Click'])
+# train_y = train_data['Click']
 
-train_x = train_data.drop(columns=['ID', 'Click'])
-train_y = train_data['Click']
+# test_x = test.drop(columns=['ID'])
 
-test_x = test.drop(columns=['ID'])
+# features = torch.tensor(train_data.drop(columns=['ID', 'Click']).values, dtype=torch.float32)
+# targets = torch.tensor(train_data['Click'].values, dtype=torch.float32).unsqueeze(1)
+# dataset = TensorDataset(features, targets)
+# loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
-features = torch.tensor(train_data.drop(columns=['ID', 'Click']).values, dtype=torch.float32)
-targets = torch.tensor(train_data['Click'].values, dtype=torch.float32).unsqueeze(1)
-dataset = TensorDataset(features, targets)
-loader = DataLoader(dataset, batch_size=32, shuffle=True)
+# optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+# Optimizer 설정
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-def train_model(model, data_loader):
-    model.train()
-    for features, target in data_loader:
-        optimizer.zero_grad()
-        output = model(features)
-        loss = F.binary_cross_entropy_with_logits(output, target)
-        loss.backward()
-        optimizer.step()
-
-train_model(model, loader)
+# 모델 학습
+model.fit(loader, optimizer)
