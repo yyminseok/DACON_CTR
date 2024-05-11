@@ -26,7 +26,7 @@ def normalized_entropy(true_labels: np.ndarray, pred_probs: np.ndarray):
 
 
 class Trainer(abc.ABC):
-    def __init__(self, loss_fn, optimizer, device, hypara_dict, save_dir='/params'):
+    def __init__(self, loss_fn, optimizer, device, hypara_dict, save_dir='./params'):
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.device = device
@@ -48,9 +48,9 @@ class Trainer(abc.ABC):
             max_auc = 0.0
             for inputs, labels in data_loader:
                 inputs = inputs.to(self.device)
-                labels = labels.to(self.device)
+                labels = labels.to(self.device).float()
 
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 logits = model(inputs)
                 loss = self.loss_fn(logits, labels)
                 loss.backward()  # back propagetion
@@ -69,7 +69,7 @@ class Trainer(abc.ABC):
         inputs = valid_X.to(self.device)
         with torch.no_grad():
             pred_probs = torch.sigmoid(model(inputs))
-        pred_probs = pred_probs.to(self.device).detach().numpy()
+        pred_probs = pred_probs.to('cpu').detach().numpy()
         loss = logloss(valid_y, pred_probs)
         auc = pr_auc(valid_y, pred_probs)
         return loss, auc

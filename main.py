@@ -40,26 +40,29 @@ def main():
                             FROM read_csv_auto('{train_path}')
                             WHERE Click = 0
                             ORDER BY random()
-                            LIMIT 5000)
+                            LIMIT 3000)
                             UNION ALL
                             (SELECT *
                             FROM read_csv_auto('{train_path}')
                             WHERE Click = 1
                             ORDER BY random()
-                            LIMIT 5000)""").df()
+                            LIMIT 3000)""").df()
 
     con.close()
     test_data = pd.read_csv(test_path)
 
     # tain, val 분할
+    print('tain, val 분할')
     train_data, val_data = train_test_split(train_data, test_size=0.2, random_state=42, shuffle=True)
 
     #make dataset
+    print('make dataset')
     use_columns = train_data.drop(columns=['ID','Click']).columns.tolist()
     label_column = 'Click'
     dataset = FMDataset(train_data, val_data, test_data, use_columns, label_column)
 
     #Setting
+    print('Setting')
     loss_fn=nn.BCEWithLogitsLoss()
     optimizer='Adam'
     device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -71,6 +74,7 @@ def main():
     valid_X, valid_y = dataset.get_valid()
 
     #Train
+    print('Train')
     trainer.fit(train_loader, valid_X, valid_y, epochs=50)
 
     #Predict
