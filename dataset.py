@@ -1,70 +1,33 @@
 import torch
-from torch.utils.data import Dataset
 import pandas as pd
-import numpy as np
-import os
-import duckdb
+from category_encoders import OrdinalEncoder, CountEncoder
 
-continous_features = 13#수정할꺼임
+def add_one(n):
+    return n + 1
 
-class CriteoDataset(Dataset):
+class FMDataset(torch.utils.data.Dataset):
+    def __init__(self, df_train: pd.DataFrame,  df_test: pd.DataFrame, use_columns, label_column='Click'):
+        encoder = OrdinalEncoder(cols=use_columns, handle_unknown='impute').fit(df_train)
+        df_train_X = encoder.transform(df_train).astype('int64')
+        df_test_X  = encoder.transform(df_test).astype('int64')
 
-    def __init__(self, root, train=True):
-        self.root = root
-        self.train = train
+        self.train_X = torch.from_numpy(df_train_X[use_columns].values).long()
+        self.train_y = df_train[label_column].values
+        self.test_X = torch.from_numpy(df_test_X[use_columns].values).long()
+        self.test_y = df_test[label_column].values
 
-        if self.train:
-            con = duckdb.connect()
+        field_dims = list(df_train_X[use_columns].max())
+        self.field_dims = list(map(add_one, field_dims))
 
-            data = con.query(f"""(SELECT *
-                        FROM read_csv_auto('{self.root}')
-                        WHERE Click = 0
-                        ORDER BY random()
-                        LIMIT 30000)
-                        UNION ALL
-                        (SELECT *
-                        FROM read_csv_auto('{self.root}')
-                        WHERE Click = 1
-                        ORDER BY random()
-                        LIMIT 30000)""").df()
-            con.close()
-            self.train_data = data.iloc[:, :-1].values
-            self.target = data.iloc[:, -1].values
-        else:
-            data = pd.read_csv(self.root)
-            self.test_data = data.iloc[:, :-1].values
+        self.data_num = self.train_X.size()[0]
+
+    def get_test(self):
+        return self.test_X, self.test_y
     
-    def __getitem__(self, idx):
-        if self.train:
-            dataI, targetI = self.train_data[idx, :], self.target[idx]
-            # index of continous features are zero
-            Xi_coutinous = np.zeros_like(dataI[:continous_features])
-            Xi_categorial = dataI[continous_features:]
-            Xi = torch.from_numpy(np.concatenate((Xi_coutinous, Xi_categorial)).astype(np.int32)).unsqueeze(-1)
-            
-            # value of categorial features are one (one hot features)
-            Xv_categorial = np.ones_like(dataI[continous_features:])
-            Xv_coutinous = dataI[:continous_features]
-            Xv = torch.from_numpy(np.concatenate((Xv_coutinous, Xv_categorial)).astype(np.int32))
-            return Xi, Xv, targetI
-        else:
-            dataI = self.test_data.iloc[idx, :]
-            # index of continous features are one
-            Xi_coutinous = np.ones_like(dataI[:continous_features])
-            Xi_categorial = dataI[continous_features:]
-            Xi = torch.from_numpy(np.concatenate((Xi_coutinous, Xi_categorial)).astype(np.int32)).unsqueeze(-1)
-            
-            # value of categorial features are one (one hot features)
-            Xv_categorial = np.ones_like(dataI[continous_features:])
-            Xv_coutinous = dataI[:continous_features]
-            Xv = torch.from_numpy(np.concatenate((Xv_coutinous, Xv_categorial)).astype(np.int32))
-            return Xi, Xv
-
     def __len__(self):
-        if self.train:
-            return len(self.train_data)
-        else:
-            return len(self.test_data)
+        return self.data_num
 
-    def _check_exists(self):
-        return os.path.exists(self.root)
+    def __getitem__(self, idx):
+        out_data = self.train_X[idx]
+        out_label = self.train_y[idx]
+        return out_data, out_label

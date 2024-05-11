@@ -14,10 +14,10 @@ from sklearn.ensemble import AdaBoostClassifier
 from catboost import CatBoostClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
-from DeepFM import DeepFM
+from model import FM
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import torch.nn.functional as F
-
+from dataset import FMDataset
 
 def seed_everything(seed):
     random.seed(seed)
@@ -46,11 +46,25 @@ train_data = con.query(f"""(SELECT *
 con.close()
 test_data = pd.read_csv(test_path)
 
+
+use_columns = list(test_data.drop(columns=['ID', 'Click']).index)
+label_column = 'Click'
+
+dataset = FMDataset(train_data, test_data, use_columns, label_column)
+
+train_loader = DataLoader(dataset, batch_size=32, shuffle=True)
+
+
+
+
+
 #Select x,y
 train_x = train_data.drop(columns=['ID', 'Click'])
 train_y = train_data['Click']
 
 test_x = test_data.drop(columns=['ID'])
+
+
 
 #Fill NaN
 # for col in tqdm(train_x.columns):
@@ -92,7 +106,7 @@ loader = DataLoader(dataset, batch_size=32, shuffle=True)
 
 #모델 정의 (DeepFM)
 feature_sizes = [len(np.unique(train_x[col])) for col in train_x.columns]
-model = DeepFM(feature_sizes=feature_sizes, embedding_size=4, hidden_dims=[32, 32], num_classes=1, use_cuda=True)
+model = FM(feature_sizes=feature_sizes, embedding_size=4, hidden_dims=[32, 32], num_classes=1, use_cuda=True)
 
 # train_x = train_data.drop(columns=['ID', 'Click'])
 # train_y = train_data['Click']
