@@ -55,10 +55,10 @@ class Trainer(abc.ABC):
                 loss = self.loss_fn(logits, labels)
                 loss.backward()  # back propagetion
                 optimizer.step()
-            _, valid_auc = self._validation_model(model, valid_X, valid_y)
-            if valid_auc > max_auc:
-                self._save_model_params(model, model_params_file)
-                max_auc = valid_auc
+            # _, valid_auc = self._validation_model(model, valid_X, valid_y)
+            # if valid_auc > max_auc:
+            self._save_model_params(model,epoch, model_params_file)
+                # max_auc = valid_auc
 
     @abc.abstractmethod
     def _build_model(self, hypara_dict):
@@ -74,12 +74,13 @@ class Trainer(abc.ABC):
         auc = pr_auc(valid_y, pred_probs)
         return loss, auc
     
-    def _save_model_params(self, model, model_params_file):
-        torch.save(model.state_dict(), f'{self.save_dir}/{model_params_file}')
+    def _save_model_params(self, model, epoch, model_params_file):
+        if epoch > 25:
+            torch.save(model.state_dict(), f'{self.save_dir}/{epoch}_{model_params_file}')
     
     def predict(self, eval_X, model_params_file='tmp_params.pth'):
         model = self._build_model(self.hypara_dict)
-        model.load_state_dict(torch.load(f'{self.save_dir}/{model_params_file}'))
+        model.load_state_dict(torch.load(f'{self.save_dir}/30_{model_params_file}'))
         model.eval()
         inputs = eval_X.to(self.device)
         with torch.no_grad():

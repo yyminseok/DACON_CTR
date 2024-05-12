@@ -75,7 +75,7 @@ def main():
 
     #Train
     print('Train')
-    trainer.fit(train_loader, valid_X, valid_y, epochs=50)
+    trainer.fit(train_loader, valid_X, valid_y, epochs=40)
 
     #Predict
     test_X = dataset.get_test()
