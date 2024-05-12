@@ -6,25 +6,28 @@ import torch.nn.functional as F
 
 class FeaturesLinear(torch.nn.Module):
 
-    def __init__(self, field_dims, output_dim=1):
+    def __init__(self, field_dims, output_dim=1, device='cuda'):
         super().__init__()
-        self.fc = torch.nn.Embedding(sum(field_dims), output_dim)
-        self.bias = torch.nn.Parameter(torch.zeros((output_dim,)))
-        self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.float32)
+        self.fc = torch.nn.Embedding(sum(field_dims), output_dim).to(device)
+        self.bias = torch.nn.Parameter(torch.zeros((output_dim,))).to(device)
+        self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]),  dtype=torch.int64, device=device)
 
     def forward(self, x):
         """
         :param x: Long tensor of size ``(batch_size, num_fields)``
         """
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
-        return torch.sum(self.fc(x), dim=1) + self.bias #여기서 오류남
+        a=torch.sum(self.fc(x), dim=1)
+        b=self.bias
+        c=a+b
+        return c
 
 class FeaturesEmbedding(torch.nn.Module):
 
-    def __init__(self, field_dims, embed_dim):
+    def __init__(self, field_dims, embed_dim, device='cuda'):
         super().__init__()
-        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim)
-        self.offsets = np.array((0, *np.cumsum(field_dims)[:-1]), dtype=np.float32)
+        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim, device=device).to(device)
+        self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]), dtype=torch.int64, device=device)
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 
     def forward(self, x):
@@ -44,8 +47,8 @@ class FactorizationMachine(torch.nn.Module):
         """
         :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
         """
-        square_of_sum = torch.sum(x, dim=1) ** 2
-        sum_of_square = torch.sum(x ** 2, dim=1)
+        square_of_sum = torch.sum(x, dim=1)**2
+        sum_of_square = torch.sum(x**2, dim=1)####
         ix = square_of_sum - sum_of_square
         if self.reduce_sum:
             ix = torch.sum(ix, dim=1, keepdim=True)

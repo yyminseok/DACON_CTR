@@ -75,11 +75,13 @@ def main():
 
     #Train
     print('Train')
-    trainer.fit(train_loader, valid_X, valid_y, epochs=50)
+    trainer.fit(train_loader, valid_X, valid_y, epochs=10)
 
     #Predict
+    print("###############")
     test_X = dataset.get_test()
     pred_probs = trainer.predict(test_X)
+    print(pred_probs)
 
 
 if __name__ == '__main__':
