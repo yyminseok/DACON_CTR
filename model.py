@@ -10,7 +10,11 @@ class FeaturesLinear(torch.nn.Module):
         super().__init__()
         self.fc = torch.nn.Embedding(sum(field_dims), output_dim).to(device)
         self.bias = torch.nn.Parameter(torch.zeros((output_dim,))).to(device)
+<<<<<<< HEAD
         self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]),  dtype=torch.int64, device=device)
+=======
+        self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]),  dtype=torch.long, device=device)
+>>>>>>> 5643c50aa8b997ac471142da4aa465496c0c9188
 
     def forward(self, x):
         """
@@ -26,8 +30,13 @@ class FeaturesEmbedding(torch.nn.Module):
 
     def __init__(self, field_dims, embed_dim, device='cuda'):
         super().__init__()
+<<<<<<< HEAD
         self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim, device=device).to(device)
         self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]), dtype=torch.int64, device=device)
+=======
+        self.embedding = torch.nn.Embedding(sum(field_dims), embed_dim).to(device)
+        self.offsets = torch.tensor((0, *np.cumsum(field_dims)[:-1]), dtype=torch.long, device=device)
+>>>>>>> 5643c50aa8b997ac471142da4aa465496c0c9188
         torch.nn.init.xavier_uniform_(self.embedding.weight.data)
 
     def forward(self, x):

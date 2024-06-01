@@ -75,7 +75,11 @@ def main():
 
     #Train
     print('Train')
+<<<<<<< HEAD
     trainer.fit(train_loader, valid_X, valid_y, epochs=10)
+=======
+    trainer.fit(train_loader, valid_X, valid_y, epochs=40)
+>>>>>>> 5643c50aa8b997ac471142da4aa465496c0c9188
 
     #Predict
     print("###############")
