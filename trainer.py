@@ -75,20 +75,12 @@ class Trainer(abc.ABC):
         return loss, auc
     
     def _save_model_params(self, model, epoch, model_params_file):
-<<<<<<< HEAD
         if epoch > 4:
-=======
-        if epoch > 25:
->>>>>>> 5643c50aa8b997ac471142da4aa465496c0c9188
             torch.save(model.state_dict(), f'{self.save_dir}/{epoch}_{model_params_file}')
     
     def predict(self, eval_X, model_params_file='tmp_params.pth'):
         model = self._build_model(self.hypara_dict)
-<<<<<<< HEAD
         model.load_state_dict(torch.load(f'{self.save_dir}/5_{model_params_file}'))
-=======
-        model.load_state_dict(torch.load(f'{self.save_dir}/30_{model_params_file}'))
->>>>>>> 5643c50aa8b997ac471142da4aa465496c0c9188
         model.eval()
         inputs = eval_X.to(self.device)
         with torch.no_grad():
